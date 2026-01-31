@@ -1,0 +1,373 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HC vs mHC 稳定性对比</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            background: #fafafa;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 40px;
+            user-select: none;
+        }
+
+        .container {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+            padding: 50px;
+            width: 100%;
+            max-width: 900px;
+            position: relative;
+            cursor: default;
+        }
+
+        .comparison {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+            margin-bottom: 30px;
+        }
+
+        .card {
+            border-radius: 16px;
+            padding: 30px;
+            text-align: center;
+            transition: all 0.4s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .label {
+            font-size: 20px;
+            font-weight: 500;
+            margin-bottom: 12px;
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 6px;
+            transition: all 0.3s ease;
+        }
+
+        .value-box {
+            border-radius: 12px;
+            padding: 20px 15px;
+            margin-bottom: 10px;
+            font-family: "SF Mono", Monaco, "Cascadia Code", "Courier New", monospace;
+            font-size: 42px;
+            font-weight: 400;
+            letter-spacing: -1px;
+            transition: font-size 0.3s ease;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            line-height: 1.2;
+            background: rgba(255,255,255,0.5);
+        }
+
+        .value-box.small { font-size: 32px; }
+        .value-box.smaller { font-size: 26px; }
+        .value-box.smallest { font-size: 20px; }
+
+        .status {
+            font-size: 16px;
+            margin-top: 6px;
+            font-weight: 500;
+            height: 24px;
+            transition: all 0.3s ease;
+        }
+
+        .hc-card {
+            background: #fef2f2;
+            border: 1px solid #fee2e2;
+        }
+        .hc-card .label { 
+            background: rgba(220, 38, 38, 0.1); 
+            color: #dc2626; 
+        }
+        .hc-card .value-box { 
+            color: #ef4444; 
+            background: rgba(254, 226, 226, 0.6);
+        }
+        .hc-card .status { color: #dc2626; }
+
+        .mhc-card {
+            background: #f0fdfa;
+            border: 1px solid #ccfbf1;
+        }
+        .mhc-card .label { 
+            background: rgba(13, 148, 136, 0.1); 
+            color: #0d9488; 
+        }
+        .mhc-card .value-box { 
+            color: #14b8a6; 
+            background: rgba(204, 251, 241, 0.6);
+        }
+        .mhc-card .status { color: #0d9488; }
+
+        .chart-container {
+            height: 100px;
+            margin-top: 20px;
+            position: relative;
+        }
+
+        svg {
+            width: 100%;
+            height: 100%;
+            overflow: visible;
+        }
+
+        .line-hc {
+            fill: none;
+            stroke: #ef4444;
+            stroke-width: 2.5;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+        }
+
+        .line-mhc {
+            fill: none;
+            stroke: #14b8a6;
+            stroke-width: 2.5;
+            stroke-linecap: round;
+        }
+
+        .progress-section {
+            border-top: 1px solid #f3f4f6;
+            padding-top: 25px;
+        }
+
+        .step-label {
+            text-align: center;
+            font-family: "SF Mono", Monaco, monospace;
+            color: #6b7280;
+            font-size: 15px;
+            margin-bottom: 10px;
+            font-weight: 500;
+        }
+
+        .progress-bar-container {
+            height: 10px;
+            background: #e5e7eb;
+            border-radius: 5px;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .progress-bar {
+            height: 100%;
+            width: 0%;
+            background: linear-gradient(90deg, #14b8a6 0%, #ef4444 100%);
+            border-radius: 5px;
+            transition: width 0.05s linear;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container" id="mainContainer">
+    <div class="comparison">
+        <div class="card hc-card" id="hcCard">
+            <div class="label">HC</div>
+            <div class="value-box" id="hcValue">1.00</div>
+            <div class="status" id="hcStatus">starting</div>
+            
+            <div class="chart-container">
+                <svg viewBox="0 0 400 100" preserveAspectRatio="none">
+                    <path id="hcLine" class="line-hc" d="" />
+                </svg>
+            </div>
+        </div>
+
+        <div class="card mhc-card">
+            <div class="label">mHC</div>
+            <div class="value-box">1.00</div>
+            <div class="status">stable</div>
+            
+            <div class="chart-container">
+                <svg viewBox="0 0 400 100" preserveAspectRatio="none">
+                    <line x1="0" y1="50" x2="400" y2="50" class="line-mhc" />
+                </svg>
+            </div>
+        </div>
+    </div>
+
+    <div class="progress-section">
+        <div class="step-label">Step: <span id="stepCount">0</span> / 5,000</div>
+        <div class="progress-bar-container">
+            <div class="progress-bar" id="progressBar"></div>
+        </div>
+    </div>
+</div>
+
+<script>
+    const TOTAL_STEPS = 5000;
+    const SAMPLE_RATE = 5;
+    const MAX_VALUE = 12000; // 最终饱和值（约10,553x等）
+    
+    let animationId = null;
+    let currentStep = 0;
+    let isPaused = false;
+    let history = [];
+    
+    const container = document.getElementById('mainContainer');
+    const hcValueEl = document.getElementById('hcValue');
+    const hcStatus = document.getElementById('hcStatus');
+    const hcLine = document.getElementById('hcLine');
+    const stepCountEl = document.getElementById('stepCount');
+    const progressBar = document.getElementById('progressBar');
+
+    // Logistic S型函数：先缓慢 → 中期爆炸 → 最后趋于平缓（饱和）
+    // 公式：MAX / (1 + exp(-k*(t - t0)))
+    // t0=0.35 让拐点靠前一点，k=12 控制陡峭程度
+    function calculateHCValue(step) {
+        const t = step / TOTAL_STEPS;
+        const k = 12; // 陡峭系数，越大中期增长越快
+        const t0 = 0.35; // 拐点位置
+        return 1 + (MAX_VALUE - 1) / (1 + Math.exp(-k * (t - t0)));
+    }
+
+    function getStateText(value) {
+        const ratio = value / MAX_VALUE;
+        if (ratio < 0.1) return 'starting';
+        if (ratio < 0.3) return 'drifting';
+        if (ratio < 0.6) return 'climbing';
+        if (ratio < 0.9) return 'accelerating';
+        return 'saturated'; // 最后阶段显示饱和而非exploding
+    }
+
+    function updateValueDisplay(num, element) {
+        let text;
+        if (num < 10) {
+            text = num.toFixed(2);
+        } else if (num < 100) {
+            text = num.toFixed(1) + 'x';
+        } else if (num < 1000) {
+            text = Math.floor(num) + 'x';
+        } else {
+            text = Math.floor(num).toLocaleString('en-US') + 'x';
+        }
+        
+        element.classList.remove('small', 'smaller', 'smallest');
+        const len = text.length;
+        if (len > 9) element.classList.add('smallest');
+        else if (len > 7) element.classList.add('smaller');
+        else if (len > 5) element.classList.add('small');
+        
+        element.textContent = text;
+    }
+
+    // Catmull-Rom样条生成平滑路径
+    function generateSmoothPath(values) {
+        if (values.length === 0) return "";
+        if (values.length === 1) {
+            const logVal = Math.log10(values[0]);
+            const logMax = Math.log10(MAX_VALUE);
+            const y = 100 - 8 - (logVal / logMax) * 84;
+            return `M0,${y}`;
+        }
+        
+        const width = 400;
+        const height = 100;
+        const padding = 8;
+        const chartHeight = height - padding * 2;
+        const logMax = Math.log10(MAX_VALUE * 1.1); // 留一点余量
+        
+        const points = values.map((val, idx) => {
+            const x = (idx / (values.length - 1)) * width;
+            const y = height - padding - (Math.log10(val) / logMax) * chartHeight;
+            return { x, y };
+        });
+        
+        if (points.length < 3) {
+            return `M${points[0].x},${points[0].y} L${points[points.length-1].x},${points[points.length-1].y}`;
+        }
+        
+        let d = `M${points[0].x.toFixed(2)},${points[0].y.toFixed(2)}`;
+        
+        for (let i = 0; i < points.length - 1; i++) {
+            const p0 = points[Math.max(0, i - 1)];
+            const p1 = points[i];
+            const p2 = points[i + 1];
+            const p3 = points[Math.min(points.length - 1, i + 2)];
+            
+            const cp1x = p1.x + (p2.x - p0.x) / 6;
+            const cp1y = p1.y + (p2.y - p0.y) / 6;
+            const cp2x = p2.x - (p3.x - p1.x) / 6;
+            const cp2y = p2.y - (p3.y - p1.y) / 6;
+            
+            d += ` C${cp1x.toFixed(2)},${cp1y.toFixed(2)} ${cp2x.toFixed(2)},${cp2y.toFixed(2)} ${p2.x.toFixed(2)},${p2.y.toFixed(2)}`;
+        }
+        
+        return d;
+    }
+
+    function animate() {
+        if (currentStep >= TOTAL_STEPS) {
+            setTimeout(resetAnimation, 2000);
+            return;
+        }
+
+        if (!isPaused) {
+            currentStep += 3;
+            if (currentStep > TOTAL_STEPS) currentStep = TOTAL_STEPS;
+
+            const value = calculateHCValue(currentStep);
+            
+            updateValueDisplay(value, hcValueEl);
+            hcStatus.textContent = getStateText(value);
+            
+            if (currentStep % SAMPLE_RATE === 0) {
+                history.push(value);
+                hcLine.setAttribute('d', generateSmoothPath(history));
+            }
+            
+            stepCountEl.textContent = currentStep.toLocaleString();
+            progressBar.style.width = `${(currentStep / TOTAL_STEPS) * 100}%`;
+        }
+        
+        animationId = requestAnimationFrame(animate);
+    }
+
+    function resetAnimation() {
+        currentStep = 0;
+        history = [];
+        hcValueEl.textContent = '1.00';
+        hcValueEl.classList.remove('small', 'smaller', 'smallest');
+        hcStatus.textContent = 'starting';
+        hcLine.setAttribute('d', '');
+        stepCountEl.textContent = '0';
+        progressBar.style.width = '0%';
+        
+        if (!isPaused) {
+            cancelAnimationFrame(animationId);
+            animate();
+        }
+    }
+
+    container.addEventListener('mouseenter', () => {
+        isPaused = true;
+        cancelAnimationFrame(animationId);
+    });
+
+    container.addEventListener('mouseleave', () => {
+        isPaused = false;
+        cancelAnimationFrame(animationId);
+        animate();
+    });
+
+    animate();
+</script>
+
+</body>
+</html>
